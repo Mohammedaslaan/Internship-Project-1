@@ -1,0 +1,43 @@
+#!/bin/bash 
+# This installs the CodeDeploy agent and its prerequisites on Ubuntu 22.04.  
+sudo apt-get update 
+sudo apt-get install ruby-full ruby-webrick wget -y 
+cd /tmp 
+wget https://aws-codedeploy-us-east-1.s3.us-east-1.amazonaws.com/releases/codedeploy-agent_1.3.2-1902_all.deb 
+mkdir codedeploy-agent_1.3.2-1902_ubuntu22 
+dpkg-deb -R codedeploy-agent_1.3.2-1902_all.deb codedeploy-agent_1.3.2-1902_ubuntu22 
+sed 's/Depends:.*/Depends:ruby3.0/' -i ./codedeploy-agent_1.3.2-1902_ubuntu22/DEBIAN/control 
+dpkg-deb -b codedeploy-agent_1.3.2-1902_ubuntu22/ 
+sudo dpkg -i codedeploy-agent_1.3.2-1902_ubuntu22.deb 
+systemctl list-units --type=service | grep codedeploy 
+sudo service codedeploy-agent status
+
+
+# Add Docker's official GPG key
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+
+# Add the Docker repository to Apt sources
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu \
+  $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+# Install Docker packages
+sudo apt-get update
+sudo apt-get install -y docker-ce docker-ce-cli containerd.io
+
+sudo apt install -y mysql-server 
+# MySQL setup - Replace 'root' and 'root12345' with more secure credentials
+sudo mysql -e "CREATE USER 'root'@'%' IDENTIFIED BY 'root12345';"
+sudo mysql -e "GRANT ALL PRIVILEGES ON *.* TO 'root'@'%';"
+sudo mysql -e "FLUSH PRIVILEGES;"
+# Set MySQL credentials in a secure way
+echo -e "[client]\nuser=root\npassword=root12345" > ~/.my.cnf
+chmod 600 ~/.my.cnf
+
+# Set the MySQL password for the current session
+export MYSQL_PWD='root12345'
+
+git clone https://github.com/Mohammedaslaan/LoginWebApp.git
+cd LoginWebApp/
+
+mysql -h ${HOST} -u root --ssl-mode=DISABLED < database.sql
